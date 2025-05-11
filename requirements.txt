@@ -1,4 +1,4 @@
-python-telegram-bot==13.15      # Librería para interactuar con la API de Telegram
-paypalrestsdk==1.13.3           # SDK de PayPal para manejar pagos
-python-dotenv==1.1.0          # Para gestionar las variables de entorno
-gunicorn==20.1.0                # Servidor WSGI para correr la aplicación en Heroku
+python-dotenv==0.21.0
+python-telegram-bot==20.0a3
+flask==2.0.1
+gunicorn==20.1.0
