@@ -25,51 +25,79 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "video_tutorial":
-        user_id = str(query.from_user.id)
-        pago_realizado = verificar_pago(user_id)
+        # Paso 1: Verificar si ya tenemos un order_id en memoria
+        if "order_id" in context.user_data:
+            order_id = context.user_data["order_id"]
+            if verificar_pago(order_id):
+                enlace_drive = "https://drive.google.com/file/d/1G_Idowx9lPCYd5vgKFv3L_6kcbkW_Rte/view?usp=drivesdk"
+                enlace_youtube = "https://youtu.be/8ZEExAeS4aQ?si=lfG7BvAhr1HOGzZ0"
+                mensaje = f"Aquí tienes el video tutorial sobre texturas:\n{enlace_drive}\n\nTambién te dejo un video complementario en YouTube:\n{enlace_youtube}"
+                await query.edit_message_text(mensaje)
+                return
+            else:
+                await query.message.reply_text("Tu pago aún no ha sido confirmado. Si ya pagaste, espera unos segundos y vuelve a presionar el botón.")
+                return
 
-        if pago_realizado:
-            enlace = "https://drive.google.com/file/d/1G_Idowx9lPCYd5vgKFv3L_6kcbkW_Rte/view?usp=drivesdk"
-            await query.edit_message_text(f"Aquí tienes el video tutorial sobre texturas:\n{enlace}")
+        # Paso 2: Generar el enlace de pago
+        enlace_pago = generar_enlace_de_pago(query.from_user.id)
+        if "paypal.com" in enlace_pago:
+            try:
+                order_id = enlace_pago.split("/")[5]
+                context.user_data["order_id"] = order_id
+                await query.message.reply_text(
+                    f"💵 Para ver el video tutorial, realiza el pago de 1 USD:\n{enlace_pago}\n\nLuego vuelve a presionar este botón."
+                )
+            except Exception as e:
+                await query.message.reply_text("No se pudo generar el pago correctamente. Inténtalo más tarde.")
+                print(f"Error al generar el enlace de pago: {e}")
         else:
-            link_pago = generar_enlace_de_pago(user_id)
-            await query.edit_message_text(
-                text=f"💵 Para ver el video tutorial, debes pagar 1 USD:\n{link_pago}\n\nLuego de pagar, presiona nuevamente el botón."
-            )
+            await query.message.reply_text("Ocurrió un error al generar el enlace de pago.")
 
     elif query.data == "info_texturas":
         mensaje = (
             "Las texturas, mejor conocidas como mods, existen en muchos juegos como Free Fire, Dota 2 y muchos más..."
         )
         await query.edit_message_text(text=mensaje)
+
+        # Verificación del archivo info_texturas.mp4
         video_path = "info_texturas.mp4"
         if os.path.exists(video_path):
             with open(video_path, "rb") as video_file:
                 await query.message.reply_video(video=video_file, caption="Video Ejemplo de las Texturas.")
         else:
-            await query.message.reply_text("El archivo 'info_texturas.mp4' no fue encontrado.")
+            await query.message.reply_text("El archivo 'info_texturas.mp4' no fue encontrado en el directorio.")
 
     elif query.data == "activar_desarrollador":
         links = [
-            "https://www.tiktok.com/@usuario1/video/123456789",
-            "https://www.tiktok.com/@usuario2/video/987654321",
-            "https://www.tiktok.com/@usuario3/video/567891234"
+            "https://vm.tiktok.com/ZMSJnGE8F/",
+            "https://vm.tiktok.com/ZMSJncaNf/",
+            "https://vm.tiktok.com/ZMSJno3YP/",
+            "https://vm.tiktok.com/ZMSJn7EC6/",
+            "https://vm.tiktok.com/ZMSJWRPjP/",
+            "https://vm.tiktok.com/ZMSJWfUNA/"
         ]
         await query.edit_message_text("🎥 Videos de desarrollo activados para diferentes marcas:\n" + "\n".join(links))
 
 # Comandos directos (opcionales)
 async def send_video_tutorial(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    enlace = "https://drive.google.com/file/d/1G_Idowx9lPCYd5vgKFv3L_6kcbkW_Rte/view?usp=drivesdk"
-    await update.message.reply_text(f"Aquí tienes el video tutorial:\n{enlace}")
+    enlace_drive = "https://drive.google.com/file/d/1G_Idowx9lPCYd5vgKFv3L_6kcbkW_Rte/view?usp=drivesdk"
+    enlace_youtube = "https://youtu.be/8ZEExAeS4aQ?si=lfG7BvAhr1HOGzZ0"
+    mensaje = f"Aquí tienes el video tutorial:\n{enlace_drive}\n\nTambién te dejo un video complementario en YouTube:\n{enlace_youtube}"
+    await update.message.reply_text(mensaje)
 
 async def send_info_texturas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje = (
-        "Las texturas, mejor conocidas como mods, existen en muchos juegos como Free Fire, Dota 2 y muchos más. Estos mods no son baneables, ya que no alteran el juego; solo cambian la apariencia básica (por defecto) del héroe, y solo tú puedes ver los cambios. De esta manera, este mod no afecta el rendimiento de otros jugadores."
+        "Las texturas, mejor conocidas como mods, existen en muchos juegos como Free Fire, Dota 2 y muchos más. "
+        "Estos mods no son baneables, ya que no alteran el juego; solo cambian la apariencia básica del héroe. "
+        "Solo tú puedes ver los cambios, por lo tanto no afecta a otros jugadores."
     )
     await update.message.reply_text(mensaje)
+
+    # Verificación del archivo info_texturas.mp4
     video_path = "info_texturas.mp4"
     if os.path.exists(video_path):
         with open(video_path, "rb") as video_file:
             await update.message.reply_video(video=video_file, caption="Video Ejemplo de las Texturas.")
     else:
-        await update.message.reply_text("El archivo 'info_texturas.mp4' no fue encontrado.")
+        await update.message.reply_text("El archivo 'info_texturas.mp4' no fue encontrado en el directorio.")
+
