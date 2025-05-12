@@ -142,11 +142,12 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Iniciar bot y servidor web
 async def main():
     app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", say_hello))
-    app.add_handler(CommandHandler("menu", show_menu))
-    app.add_handler(CallbackQueryHandler(handle_buttons))
+    
+    # Eliminar cualquier webhook previo, si existe
+    await app.bot.delete_webhook()
+    print("[OK] Webhook eliminado (si existía)")
 
-    await app.initialize()
+    # Establecer el nuevo webhook
     await app.bot.set_webhook(WEBHOOK_URL)
     await app.start()
     print("[OK] Webhook de Telegram activo")
@@ -157,11 +158,4 @@ async def main():
 
     runner = web.AppRunner(webhook_app)
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 10000)))
-    await site.start()
-    print("[OK] Servidor HTTP escuchando en /webhook")
-
-    await asyncio.Event().wait()
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    site = web.TCPSite
