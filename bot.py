@@ -4,9 +4,10 @@ import asyncio
 import aiohttp
 from aiohttp import web
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+)
 
-# Configuración
 TOKEN = "7834991561:AAEJN4oP0MxJn5K9ShS1qljJ13jSb4BfRXw"
 PAYPAL_CLIENT_ID = "ARV1CLPp866P1sLfq85LPeTP-pODgOcKdp1TCUYVSiPeuekLn6J71hKlf9K64ThABV9MKdTCppm3PG9n"
 PAYPAL_SECRET = "EEFMps6m46M0Jn3_z5S6bl89AHe6p2euc-fJqez5TDw3Xjgs1JOzjtDGmKlSqM3mcdLw3q3Ey772zquH"
@@ -25,7 +26,9 @@ async def obtener_token_paypal():
             if resp.status == 200:
                 token_data = await resp.json()
                 return token_data.get("access_token")
-            return None
+            else:
+                print("[ERROR] No se pudo obtener token de PayPal")
+                return None
 
 # Crear orden de pago
 async def crear_pago(usuario_id):
@@ -58,9 +61,10 @@ async def crear_pago(usuario_id):
                 for link in data.get("links", []):
                     if link.get("rel") == "approve":
                         return link["href"]
+            print("[ERROR] No se pudo crear el pago:", data)
             return None
 
-# Webhook PayPal
+# Webhook de PayPal
 async def handle_webhook(request):
     payload = await request.json()
     event_type = payload.get("event_type")
@@ -79,14 +83,20 @@ async def handle_webhook(request):
                 async with session.post(f"{PAYPAL_API}/v2/checkout/orders/{order_id}/capture", headers=headers) as resp:
                     if resp.status == 201:
                         pagos_confirmados.add(int(custom_id))
-                        print(f"[✔] Pago confirmado para usuario {custom_id}")
+                        print(f"[✔ PAGO CAPTURADO] Usuario {custom_id}")
     return web.Response(status=200)
 
-# Telegram: /start
+# Webhook de Telegram
+async def handle_telegram(request):
+    data = await request.json()
+    update = Update.de_json(data, app.bot)
+    await app.process_update(update)
+    return web.Response(status=200)
+
+# Comandos del bot
 async def say_hello(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Bienvenido. Usa /menu para ver opciones.")
 
-# Telegram: /menu
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🎮 Video Tutorial", callback_data="video_tutorial")],
@@ -96,7 +106,6 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("Menú:", reply_markup=reply_markup)
 
-# Botones
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -116,14 +125,12 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text(f"Paga $1 USD aquí:\n{url}")
             else:
                 await query.edit_message_text("❌ Error al generar el pago.")
-
     elif query.data == "info_texturas":
         msg = (
             "Las texturas (mods) cambian solo la apariencia visual de los héroes en el juego. "
             "No afectan la jugabilidad ni el rendimiento, por lo tanto, no son baneables."
         )
         await query.edit_message_text(text=msg)
-
     elif query.data == "activar_desarrollador":
         mensaje = (
             "<b>Modo desarrollador:</b>\n"
@@ -136,32 +143,39 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await query.edit_message_text(text=mensaje, parse_mode="HTML")
 
-# Main
+# Iniciar bot y servidor web
 async def main():
+    global app
     app = ApplicationBuilder().token(TOKEN).build()
 
+    # Handlers de comandos
     app.add_handler(CommandHandler("start", say_hello))
     app.add_handler(CommandHandler("menu", show_menu))
     app.add_handler(CallbackQueryHandler(handle_buttons))
 
-    # Inicializa el bot correctamente
     await app.initialize()
-    await app.bot.delete_webhook()
     await app.bot.set_webhook(WEBHOOK_URL)
+
+    # Mostrar información del webhook
+    info = await app.bot.get_webhook_info()
+    print(f"[Webhook Info] {info}")
+
     await app.start()
 
     # Servidor aiohttp
     webhook_app = web.Application()
-    webhook_app.router.add_post("/webhook", handle_webhook)
+    webhook_app.router.add_post("/", handle_telegram)
+    webhook_app.router.add_post("/paypal", handle_webhook)
 
     runner = web.AppRunner(webhook_app)
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 8080)))
+    site = web.TCPSite(runner, port=int(os.environ.get("PORT", 8080)))
     await site.start()
 
-    print("[✅] Bot y webhook iniciados correctamente.")
-    await asyncio.Event().wait()
+    print("Bot corriendo con webhook en Render...")
+
+    await app.updater.start_polling()
+    await app.running.wait()
 
 if __name__ == "__main__":
     asyncio.run(main())
-
