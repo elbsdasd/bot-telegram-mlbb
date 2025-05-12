@@ -1,4 +1,3 @@
-print("Bot actualizado - nueva versión")
 import os
 import json
 import asyncio
@@ -10,7 +9,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 TOKEN = "7834991561:AAFYaeSkdCV6C8jJEX81ABcbLqiCKbGHv-w"
 PAYPAL_CLIENT_ID = "Aaenpkty_pmWsrzsR8Tr3eQ4HBgHG21RGZ0PoULy2PBfEHxObXXaB_kpMVJeaQq-9zuZrPKWcy9PA"
 PAYPAL_SECRET = "EIh7jyA13zoVmjWKntONVB0pc02t6vK2g3-6tACrE582S-Ff7DfyExGxxtEoKmXPWNXofcGXmHDPh6l8"
-WEBHOOK_URL = "https://bot-telegram-mlbb.onrender.com/webhook"  # Debes registrar esto en PayPal
+WEBHOOK_URL = "https://bot-telegram-mlbb.onrender.com/webhook"
 PAYPAL_API = "https://api-m.paypal.com"
 PRECIOS = {"video_tutorial": "1.00"}
 
@@ -32,12 +31,10 @@ async def crear_pago(usuario_id):
     }
     body = {
         "intent": "CAPTURE",
-        "purchase_units": [
-            {
-                "amount": {"currency_code": "USD", "value": PRECIOS["video_tutorial"]},
-                "custom_id": str(usuario_id)
-            }
-        ],
+        "purchase_units": [{
+            "amount": {"currency_code": "USD", "value": PRECIOS["video_tutorial"]},
+            "custom_id": str(usuario_id)
+        }],
         "application_context": {
             "brand_name": "Bot MLBB",
             "landing_page": "NO_PREFERENCE",
@@ -49,7 +46,6 @@ async def crear_pago(usuario_id):
     async with aiohttp.ClientSession() as session:
         async with session.post(f"{PAYPAL_API}/v2/checkout/orders", headers=headers, json=body) as resp:
             data = await resp.json()
-            print(f"[PAYPAL RESPONSE] {json.dumps(data, indent=2)}")
             for link in data.get("links", []):
                 if link.get("rel") == "approve":
                     return link.get("href")
@@ -57,24 +53,21 @@ async def crear_pago(usuario_id):
 
 async def handle_webhook(request):
     payload = await request.json()
-    print(f"[WEBHOOK RECIBIDO] {json.dumps(payload, indent=2)}")
-
     event_type = payload.get("event_type")
     resource = payload.get("resource", {})
-    custom_id = resource.get("purchase_units", [{}])[0].get("custom_id") if resource.get("purchase_units") else None
 
-    if event_type == "CHECKOUT.ORDER.APPROVED" and resource.get("id"):
-        order_id = resource["id"]
+    if event_type == "CHECKOUT.ORDER.APPROVED":
+        order_id = resource.get("id")
+        custom_id = resource.get("purchase_units", [{}])[0].get("custom_id")
         access_token = await obtener_token_paypal()
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {access_token}"
         }
         async with aiohttp.ClientSession() as session:
-            async with session.post(f"{PAYPAL_API}/v2/checkout/orders/{order_id}/capture", headers=headers) as capture_resp:
-                capture_data = await capture_resp.json()
-                print(f"[PAYPAL CAPTURE] {json.dumps(capture_data, indent=2)}")
-                if capture_resp.status == 201 and custom_id:
+            async with session.post(f"{PAYPAL_API}/v2/checkout/orders/{order_id}/capture", headers=headers) as resp:
+                data = await resp.json()
+                if resp.status == 201 and custom_id:
                     pagos_confirmados.add(int(custom_id))
                     print(f"[PAGO CONFIRMADO] Usuario: {custom_id}")
 
@@ -85,35 +78,39 @@ async def say_hello(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("\ud83c\udfae Video Tutorial", callback_data="video_tutorial")],
-        [InlineKeyboardButton("\u2139 Informaci\u00f3n de Texturas", callback_data="info_texturas")],
-        [InlineKeyboardButton("\ud83d\udee0 Activar Desarrollador", callback_data="activar_desarrollador")],
+        [InlineKeyboardButton("🎮 Video Tutorial", callback_data="video_tutorial")],
+        [InlineKeyboardButton("ℹ Información de Texturas", callback_data="info_texturas")],
+        [InlineKeyboardButton("🛠 Activar Desarrollador", callback_data="activar_desarrollador")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Men\u00fa de opciones:", reply_markup=reply_markup)
+    await update.message.reply_text("Menú de opciones:", reply_markup=reply_markup)
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    usuario_id = query.from_user.id
     await query.answer()
+    usuario_id = query.from_user.id
 
     if query.data == "video_tutorial":
         if usuario_id in pagos_confirmados:
             mensaje = (
-                "Aqu\u00ed tienes el video tutorial sobre texturas:\n"
+                "Aquí tienes el video tutorial sobre texturas:\n"
                 "https://drive.google.com/file/d/1G_Idowx9lPCYd5vgKFv3L_6kcbkW_Rte/view?usp=drivesdk\n\n"
-                "\ud83d\udcfd <b>Soluci\u00f3n Shizuku (YouTube):</b>\nhttps://youtu.be/8ZEExAeS4aQ?si=LTw4l8GFuSTTZ_bM"
+                "📽 <b>Solución Shizuku (YouTube):</b>\nhttps://youtu.be/8ZEExAeS4aQ?si=LTw4l8GFuSTTZ_bM"
             )
             await query.edit_message_text(text=mensaje, parse_mode="HTML")
         else:
             url_pago = await crear_pago(usuario_id)
             if url_pago:
-                await query.edit_message_text(f"Paga $1 USD aqu\u00ed:\n{url_pago}")
+                await query.edit_message_text(f"Paga $1 USD aquí:\n{url_pago}")
             else:
-                await query.edit_message_text("\u274c Error al generar el pago. Intenta de nuevo m\u00e1s tarde.")
+                await query.edit_message_text("❌ Error al generar el pago. Intenta de nuevo más tarde.")
 
     elif query.data == "info_texturas":
-        mensaje = "Las texturas, mejor conocidas como mods, existen en muchos juegos como Free Fire, Dota 2 y muchos m\u00e1s. Estos mods no son baneables, ya que no alteran el juego; solo cambian la apariencia b\u00e1sica (por defecto) del h\u00e9roe, y solo t\u00fa puedes ver los cambios. De esta manera, este mod no afecta el rendimiento de otros jugadores."
+        mensaje = (
+            "Las texturas, mejor conocidas como mods, existen en muchos juegos como Free Fire, Dota 2 y muchos más. "
+            "Estos mods no son baneables, ya que no alteran el juego; solo cambian la apariencia básica (por defecto) del héroe, "
+            "y solo tú puedes ver los cambios. De esta manera, este mod no afecta el rendimiento de otros jugadores."
+        )
         await query.edit_message_text(text=mensaje)
         video_path = "info_texturas.mp4"
         if os.path.exists(video_path):
@@ -124,13 +121,13 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "activar_desarrollador":
         mensaje = (
-            "<b>Aqu\u00ed puedes buscar c\u00f3mo activar el modo desarrollador para varias marcas:</b>\n\n"
-            "\ud83d\udd0d TikTok 1: https://vm.tiktok.com/ZMSJnGE8F/\n"
-            "\ud83d\udd0d TikTok 2: https://vm.tiktok.com/ZMSJncaNf/\n"
-            "\ud83d\udd0d TikTok 3: https://vm.tiktok.com/ZMSJno3YP/\n"
-            "\ud83d\udd0d TikTok 4: https://vm.tiktok.com/ZMSJn7EC6/\n"
-            "\ud83d\udd0d TikTok 5: https://vm.tiktok.com/ZMSJWRPjP/\n"
-            "\ud83d\udd0d TikTok 6: https://vm.tiktok.com/ZMSJWfUNA/\n"
+            "<b>Aquí puedes buscar cómo activar el modo desarrollador para varias marcas:</b>\n\n"
+            "🔍 TikTok 1: https://vm.tiktok.com/ZMSJnGE8F/\n"
+            "🔍 TikTok 2: https://vm.tiktok.com/ZMSJncaNf/\n"
+            "🔍 TikTok 3: https://vm.tiktok.com/ZMSJno3YP/\n"
+            "🔍 TikTok 4: https://vm.tiktok.com/ZMSJn7EC6/\n"
+            "🔍 TikTok 5: https://vm.tiktok.com/ZMSJWRPjP/\n"
+            "🔍 TikTok 6: https://vm.tiktok.com/ZMSJWfUNA/"
         )
         await query.edit_message_text(text=mensaje, parse_mode="HTML")
 
@@ -154,8 +151,9 @@ def main():
     loop = asyncio.get_event_loop()
     loop.create_task(run_server())
 
-    print("Bot y servidor en ejecuci\u00f3n...")
+    print("Bot y servidor en ejecución...")
     app.run_polling()
 
 if __name__ == '__main__':
     main()
+
