@@ -6,15 +6,10 @@ from aiohttp import web
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# Verificar estado del webhook
-async def verificar_webhook(app):
-    webhook_info = await app.bot.get_webhook_info()
-    print("Webhook info:", webhook_info)
-
 # Configuración
 TOKEN = "7834991561:AAEJN4oP0MxJn5K9ShS1qljJ13jSb4BfRXw"
-PAYPAL_CLIENT_ID = "ARV1CLPp866P1sLfq85LPeTP-pODgOcKdp1TCUYV SiPeuekLn6J71hKlf9K64ThABV9MKdTCppm3PG9n"
-PAYPAL_SECRET = "EEFMps6m46M0Jn3_z5S6bl89AHe6p2euc-fJqez5 TDw3Xjgs1JOzjtDGmKlSqM3mcdLw3q3Ey772zquH"
+PAYPAL_CLIENT_ID = "ARV1CLPp866P1sLfq85LPeTP-pODgOcKdp1TCUYVSiPeuekLn6J71hKlf9K64ThABV9MKdTCppm3PG9n"
+PAYPAL_SECRET = "EEFMps6m46M0Jn3_z5S6bl89AHe6p2euc-fJqez5TDw3Xjgs1JOzjtDGmKlSqM3mcdLw3q3Ey772zquH"
 WEBHOOK_URL = "https://bot-telegram-mlbb.onrender.com/webhook"
 PAYPAL_API = "https://api-m.paypal.com"
 PRECIOS = {"video_tutorial": "1.00"}
@@ -30,9 +25,7 @@ async def obtener_token_paypal():
             if resp.status == 200:
                 token_data = await resp.json()
                 return token_data.get("access_token")
-            else:
-                print("[ERROR] No se pudo obtener token de PayPal")
-                return None
+            return None
 
 # Crear orden de pago
 async def crear_pago(usuario_id):
@@ -65,10 +58,9 @@ async def crear_pago(usuario_id):
                 for link in data.get("links", []):
                     if link.get("rel") == "approve":
                         return link["href"]
-            print("[ERROR] No se pudo crear el pago:", data)
             return None
 
-# Webhook para recibir eventos de PayPal
+# Webhook PayPal
 async def handle_webhook(request):
     payload = await request.json()
     event_type = payload.get("event_type")
@@ -87,14 +79,14 @@ async def handle_webhook(request):
                 async with session.post(f"{PAYPAL_API}/v2/checkout/orders/{order_id}/capture", headers=headers) as resp:
                     if resp.status == 201:
                         pagos_confirmados.add(int(custom_id))
-                        print(f"[✔ PAGO CAPTURADO] Usuario {custom_id}")
+                        print(f"[✔] Pago confirmado para usuario {custom_id}")
     return web.Response(status=200)
 
-# Comando /start
+# Telegram: /start
 async def say_hello(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Bienvenido. Usa /menu para ver opciones.")
 
-# Comando /menu
+# Telegram: /menu
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🎮 Video Tutorial", callback_data="video_tutorial")],
@@ -104,7 +96,7 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("Menú:", reply_markup=reply_markup)
 
-# Manejo de botones
+# Botones
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -144,7 +136,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await query.edit_message_text(text=mensaje, parse_mode="HTML")
 
-# Iniciar bot y servidor web
+# Main
 async def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
@@ -152,24 +144,22 @@ async def main():
     app.add_handler(CommandHandler("menu", show_menu))
     app.add_handler(CallbackQueryHandler(handle_buttons))
 
-    # Eliminar webhook anterior (por seguridad)
+    # Inicializa el bot correctamente
+    await app.initialize()
     await app.bot.delete_webhook()
     await app.bot.set_webhook(WEBHOOK_URL)
     await app.start()
-    print("[OK] Bot iniciado con webhook activo.")
 
-    # Configurar aiohttp para recibir los eventos de PayPal
+    # Servidor aiohttp
     webhook_app = web.Application()
     webhook_app.router.add_post("/webhook", handle_webhook)
 
     runner = web.AppRunner(webhook_app)
     await runner.setup()
-    site = web.TCPSite(runner, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 8080)))
     await site.start()
 
-    print("[OK] Servidor aiohttp escuchando en /webhook")
-
-    # Mantener el bot corriendo
+    print("[✅] Bot y webhook iniciados correctamente.")
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
