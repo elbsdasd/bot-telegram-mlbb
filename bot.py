@@ -25,6 +25,10 @@ async def obtener_token_paypal():
 
 async def crear_pago(usuario_id):
     access_token = await obtener_token_paypal()
+    if not access_token:
+        print("[ERROR] No se pudo obtener el token de PayPal")
+        return None
+
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {access_token}"
@@ -43,9 +47,16 @@ async def crear_pago(usuario_id):
             "cancel_url": f"{WEBHOOK_URL}/cancel"
         }
     }
+
     async with aiohttp.ClientSession() as session:
         async with session.post(f"{PAYPAL_API}/v2/checkout/orders", headers=headers, json=body) as resp:
             data = await resp.json()
+            print(f"[PAYPAL RESPONSE] status: {resp.status} - {json.dumps(data, indent=2)}")
+
+            if resp.status != 201:
+                print("[ERROR] No se pudo crear el pedido PayPal.")
+                return None
+
             for link in data.get("links", []):
                 if link.get("rel") == "approve":
                     return link.get("href")
@@ -131,29 +142,30 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await query.edit_message_text(text=mensaje, parse_mode="HTML")
 
-def main():
+async def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", say_hello))
     app.add_handler(CommandHandler("menu", show_menu))
     app.add_handler(CallbackQueryHandler(handle_buttons))
 
+    await app.initialize()
+    await app.start()
+    await app.bot.set_webhook(WEBHOOK_URL)
+    print("Webhook de Telegram establecido")
+
     webhook_app = web.Application()
     webhook_app.router.add_post("/webhook", handle_webhook)
 
     runner = web.AppRunner(webhook_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 10000)))
+    await site.start()
+    print("Servidor web iniciado")
 
-    async def run_server():
-        await runner.setup()
-        site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 10000)))
-        await site.start()
+    await asyncio.Event().wait()  # Mantener activo
 
-    loop = asyncio.get_event_loop()
-    loop.create_task(run_server())
+if __name__ == "__main__":
+    asyncio.run(main())
 
-    print("Bot y servidor en ejecución...")
-    app.run_polling()
-
-if __name__ == '__main__':
-    main()
 
