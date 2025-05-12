@@ -12,9 +12,9 @@ async def verificar_webhook(app):
     print("Webhook info:", webhook_info)
 
 # Configuración
-TOKEN = "7834991561:AAFYaeSkdCV6C8jJEX81ABcbLqiCKbGHv-w"
-PAYPAL_CLIENT_ID = "Aaenpkty_pmWsrzsR8Tr3eQ4HBgHG21RGZ0PoULy2PBfEHxObXXaB_kpMVJeaQq-9zuZrPKWcy9PA"
-PAYPAL_SECRET = "EIh7jyA13zoVmjWKntONVB0pc02t6vK2g3-6tACrE582S-Ff7DfyExGxxtEoKmXPWNXofcGXmHDPh6l8"
+TOKEN = "7834991561:AAEJN4oP0MxJn5K9ShS1qljJ13jSb4BfRXw"
+PAYPAL_CLIENT_ID = "ARV1CLPp866P1sLfq85LPeTP-pODgOcKdp1TCUYV SiPeuekLn6J71hKlf9K64ThABV9MKdTCppm3PG9n"
+PAYPAL_SECRET = "EEFMps6m46M0Jn3_z5S6bl89AHe6p2euc-fJqez5 TDw3Xjgs1JOzjtDGmKlSqM3mcdLw3q3Ey772zquH"
 WEBHOOK_URL = "https://bot-telegram-mlbb.onrender.com/webhook"
 PAYPAL_API = "https://api-m.paypal.com"
 PRECIOS = {"video_tutorial": "1.00"}
@@ -148,6 +148,30 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Handlers
-    app.add_handler(CommandHandler("start", say_
+    app.add_handler(CommandHandler("start", say_hello))
+    app.add_handler(CommandHandler("menu", show_menu))
+    app.add_handler(CallbackQueryHandler(handle_buttons))
+
+    # Eliminar webhook anterior (por seguridad)
+    await app.bot.delete_webhook()
+    await app.bot.set_webhook(WEBHOOK_URL)
+    await app.start()
+    print("[OK] Bot iniciado con webhook activo.")
+
+    # Configurar aiohttp para recibir los eventos de PayPal
+    webhook_app = web.Application()
+    webhook_app.router.add_post("/webhook", handle_webhook)
+
+    runner = web.AppRunner(webhook_app)
+    await runner.setup()
+    site = web.TCPSite(runner, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    await site.start()
+
+    print("[OK] Servidor aiohttp escuchando en /webhook")
+
+    # Mantener el bot corriendo
+    await asyncio.Event().wait()
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
