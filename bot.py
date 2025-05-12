@@ -148,23 +148,20 @@ async def main():
     global app
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Handlers de comandos
     app.add_handler(CommandHandler("start", say_hello))
     app.add_handler(CommandHandler("menu", show_menu))
     app.add_handler(CallbackQueryHandler(handle_buttons))
 
     await app.initialize()
-    await app.bot.set_webhook(WEBHOOK_URL)
+    await app.bot.set_webhook(WEBHOOK_URL + "/webhook")
 
-    # Mostrar información del webhook
     info = await app.bot.get_webhook_info()
     print(f"[Webhook Info] {info}")
 
     await app.start()
 
-    # Servidor aiohttp
     webhook_app = web.Application()
-    webhook_app.router.add_post("/", handle_telegram)
+    webhook_app.router.add_post("/webhook", handle_telegram)
     webhook_app.router.add_post("/paypal", handle_webhook)
 
     runner = web.AppRunner(webhook_app)
@@ -174,8 +171,8 @@ async def main():
 
     print("Bot corriendo con webhook en Render...")
 
-    await app.updater.start_polling()
-    await app.running.wait()
+    # Mantener la app corriendo indefinidamente
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
     asyncio.run(main())
