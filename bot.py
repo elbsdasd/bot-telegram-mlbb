@@ -12,7 +12,7 @@ async def verificar_webhook(app):
     print("Webhook info:", webhook_info)
 
 # Configuración
-TOKEN = "7834991561:AAEJN4oP0MxJn5K9ShS1qljJ13jSb4BfRXw"
+TOKEN = "7834991561:AAFYaeSkdCV6C8jJEX81ABcbLqiCKbGHv-w"
 PAYPAL_CLIENT_ID = "Aaenpkty_pmWsrzsR8Tr3eQ4HBgHG21RGZ0PoULy2PBfEHxObXXaB_kpMVJeaQq-9zuZrPKWcy9PA"
 PAYPAL_SECRET = "EIh7jyA13zoVmjWKntONVB0pc02t6vK2g3-6tACrE582S-Ff7DfyExGxxtEoKmXPWNXofcGXmHDPh6l8"
 WEBHOOK_URL = "https://bot-telegram-mlbb.onrender.com/webhook"
@@ -147,20 +147,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Iniciar bot y servidor web
 async def main():
     app = ApplicationBuilder().token(TOKEN).build()
-    
-    # Eliminar cualquier webhook previo, si existe
-    await app.bot.delete_webhook()
-    print("[OK] Webhook eliminado (si existía)")
 
-    # Establecer el nuevo webhook
-    await app.bot.set_webhook(WEBHOOK_URL)
-    await app.start()
-    print("[OK] Webhook de Telegram activo")
+    # Handlers
+    app.add_handler(CommandHandler("start", say_
 
-    # Servidor web aiohttp
-    webhook_app = web.Application()
-    webhook_app.router.add_post("/webhook", handle_webhook)
-
-    runner = web.AppRunner(webhook_app)
-    await runner.setup()
-    site = web.TCPSite
