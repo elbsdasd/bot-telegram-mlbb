@@ -6,6 +6,11 @@ from aiohttp import web
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
+# Verificar estado del webhook
+async def verificar_webhook(app):
+    webhook_info = await app.bot.get_webhook_info()
+    print("Webhook info:", webhook_info)
+
 # Configuración
 TOKEN = "7834991561:AAEJN4oP0MxJn5K9ShS1qljJ13jSb4BfRXw"
 PAYPAL_CLIENT_ID = "Aaenpkty_pmWsrzsR8Tr3eQ4HBgHG21RGZ0PoULy2PBfEHxObXXaB_kpMVJeaQq-9zuZrPKWcy9PA"
