@@ -136,7 +136,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "<b>Modo desarrollador:</b>\n"
             "🔍 TikTok 1: https://vm.tiktok.com/ZMSJnGE8F/\n"
             "🔍 TikTok 2: https://vm.tiktok.com/ZMSJncaNf/\n"
-            "🔍 TikTok 3: https://vm.tiktok.com/ZMSJno3YP/\n"
+            "🔍 TikTok 3: https://vm.tiktok.com/ZMSJn3F2z/\n"
             "🔍 TikTok 4: https://vm.tiktok.com/ZMSJn7EC6/\n"
             "🔍 TikTok 5: https://vm.tiktok.com/ZMSJWRPjP/\n"
             "🔍 TikTok 6: https://vm.tiktok.com/ZMSJWfUNA/"
@@ -158,8 +158,7 @@ async def main():
     info = await app.bot.get_webhook_info()
     print(f"[Webhook Info] {info}")
 
-    await app.start()
-
+    # Web server (aiohttp)
     webhook_app = web.Application()
     webhook_app.router.add_post("/webhook", handle_telegram)
     webhook_app.router.add_post("/paypal", handle_webhook)
@@ -172,7 +171,8 @@ async def main():
     print("Bot corriendo con webhook en Render...")
 
     # Mantener la app corriendo indefinidamente
-    await asyncio.Event().wait()
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
     asyncio.run(main())
