@@ -15,8 +15,8 @@ WEBHOOK_URL = os.environ.get("RENDER_EXTERNAL_URL")
 
 # --- ENLACES PARA EL VIDEO TUTORIAL ---
 # ¡¡ASEGÚRATE DE ACTUALIZAR ESTAS URLS!!
-LINK_VIDEO_TUTORIAL_PRINCIPAL = "https://cuty.io/wK25kGsx331U" # Reemplaza con tu URL
-LINK_VIDEO_TUTORIAL_COMPLEMENTO = "https://cuty.io/KniC"    # Reemplaza con tu URL
+LINK_VIDEO_TUTORIAL_PRINCIPAL = "https://cuty.io/DbOCWqfRlfv" # Reemplaza con tu URL
+LINK_VIDEO_TUTORIAL_COMPLEMENTO = "https://cuty.io/NKbZWpVQu"    # Reemplaza con tu URL
 
 telegram_app: Application = None
 
